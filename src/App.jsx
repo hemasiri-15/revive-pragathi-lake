@@ -425,6 +425,15 @@ export default function App() {
           <li><a href="#scale">Scale</a></li>
           <li><a href="#voices">Voices</a></li>
           <li><a href="#petition">Petition</a></li>
+          {/* Dashboard Button */}
+          <li>
+            <a
+              href="/dashboard.html"
+              className="ncta"
+            >
+              Dashboard
+            </a>
+          </li>
           <li><a href="#report" className="ncta">Report Issue</a></li>
         </ul>
       </nav>

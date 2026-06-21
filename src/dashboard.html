@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pragathi Lake — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg0:#050816;--bg1:#08101C;--bg2:#0C1528;--bg3:#0F1D38;
+  --cyan:#00D9FF;--emerald:#00FFA3;--blue:#4F9EFF;--amber:#FFB547;--red:#FF4D6D;--purple:#A78BFA;
+  --glass:rgba(255,255,255,0.035);--glass-b:rgba(255,255,255,0.07);--glass-h:rgba(255,255,255,0.06);
+  --tp:#E8F0FF;--ts:#7A96BB;--tm:#3A5470;
+  --sidebar-w:200px;--topbar-h:44px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg0);color:var(--tp);font-size:12px}
+
+/* ─── LAYOUT SHELL ─── */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) 1fr;grid-template-rows:var(--topbar-h) 1fr;height:100vh}
+
+/* ─── TOPBAR ─── */
+.topbar{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:0;
+  background:rgba(5,8,22,0.95);
+  border-bottom:1px solid var(--glass-b);
+  backdrop-filter:blur(20px);
+  z-index:100;padding:0 1rem;
+}
+.logo-area{
+  width:var(--sidebar-w);flex-shrink:0;
+  display:flex;align-items:center;gap:.5rem;
+  padding-right:1rem;border-right:1px solid var(--glass-b);
+}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 6px var(--emerald);animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.logo-text{font-family:'Space Grotesk',sans-serif;font-size:.85rem;font-weight:600;color:var(--cyan);letter-spacing:.04em}
+.topbar-pills{display:flex;align-items:center;gap:.5rem;padding:0 1rem;flex:1}
+.pill{
+  display:flex;align-items:center;gap:.35rem;
+  padding:.2rem .7rem;border-radius:4px;font-size:.65rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;
+}
+.pill-on{background:rgba(0,255,163,0.08);color:var(--emerald);border:1px solid rgba(0,255,163,0.2)}
+.pill-warn{background:rgba(255,181,71,0.08);color:var(--amber);border:1px solid rgba(255,181,71,0.2)}
+.pill-info{background:rgba(0,217,255,0.08);color:var(--cyan);border:1px solid rgba(0,217,255,0.2)}
+.sdot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 4px currentColor}
+.pulse{animation:blink 1.4s ease-in-out infinite}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:1rem}
+.clock{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--ts)}
+.health-pill{
+  font-family:'Space Grotesk',sans-serif;font-size:.8rem;font-weight:700;
+  padding:.2rem .8rem;border-radius:4px;
+  background:rgba(255,181,71,0.1);color:var(--amber);border:1px solid rgba(255,181,71,0.25);
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  background:var(--bg1);border-right:1px solid var(--glass-b);
+  display:flex;flex-direction:column;overflow-y:auto;
+  scrollbar-width:none;
+}
+.sidebar::-webkit-scrollbar{display:none}
+.nav-section-label{
+  font-size:.6rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tm);padding:.75rem 1rem .35rem;
+}
+.nav-item{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.45rem 1rem;margin:0 .35rem;border-radius:6px;
+  font-size:.78rem;font-weight:400;color:var(--ts);
+  cursor:pointer;transition:all .15s;border:1px solid transparent;
+}
+.nav-item svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.8;flex-shrink:0}
+.nav-item:hover{background:var(--glass);color:var(--tp)}
+.nav-item.active{background:rgba(0,217,255,0.08);color:var(--cyan);border-color:rgba(0,217,255,0.15)}
+.nav-badge{
+  margin-left:auto;font-size:.6rem;font-weight:600;
+  padding:.1rem .4rem;border-radius:3px;
+  background:rgba(255,77,109,0.15);color:var(--red);
+}
+.sidebar-footer{
+  margin-top:auto;padding:.75rem;border-top:1px solid var(--glass-b);
+}
+.sat-sync{
+  font-size:.65rem;color:var(--tm);text-align:center;line-height:1.6;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main{overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,217,255,0.2) transparent}
+.main::-webkit-scrollbar{width:3px}
+.main::-webkit-scrollbar-thumb{background:rgba(0,217,255,0.2);border-radius:2px}
+.view{display:none;padding:.75rem;gap:.6rem}
+.view.active{display:grid}
+
+/* ─── MISSION CONTROL grid ─── */
+#view-mission{grid-template-columns:280px 1fr 240px;grid-template-rows:auto auto 1fr auto}
+
+/* ─── CARDS ─── */
+.panel{
+  background:var(--bg2);border:1px solid var(--glass-b);border-radius:10px;
+  overflow:hidden;
+}
+.panel-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.6rem .875rem;border-bottom:1px solid var(--glass-b);
+}
+.panel-title{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ts)}
+.panel-badge{font-size:.6rem;padding:.15rem .5rem;border-radius:3px}
+.panel-body{padding:.75rem .875rem}
+
+/* ─── HEALTH GAUGE ─── */
+.gauge-center{
+  display:flex;flex-direction:column;align-items:center;
+  padding:.5rem .875rem 1rem;
+}
+.gauge-val{
+  font-family:'Space Grotesk',sans-serif;font-size:3.5rem;font-weight:700;
+  line-height:1;color:var(--amber);margin:.25rem 0 .1rem;
+}
+.gauge-label{font-size:.65rem;color:var(--ts);text-transform:uppercase;letter-spacing:.1em}
+.gauge-status{
+  margin-top:.5rem;padding:.2rem .75rem;border-radius:20px;font-size:.65rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(255,181,71,0.1);color:var(--amber);border:1px solid rgba(255,181,71,0.25);
+}
+
+/* ─── PARAM ROW ─── */
+.param-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.param-row:last-child{border-bottom:none}
+.param-name{font-size:.72rem;color:var(--ts)}
+.param-val{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:500}
+.param-bar-wrap{width:60px;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden}
+.param-bar-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.c-cyan{color:var(--cyan)} .c-green{color:var(--emerald)} .c-amber{color:var(--amber)} .c-red{color:var(--red)} .c-blue{color:var(--blue)}
+.f-cyan{background:var(--cyan)} .f-green{background:var(--emerald)} .f-amber{background:var(--amber)} .f-red{background:var(--red)} .f-blue{background:var(--blue)}
+
+/* ─── NODES ─── */
+.node-row{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.45rem .875rem;border-bottom:1px solid rgba(255,255,255,0.04);
+  cursor:default;transition:background .15s;
+}
+.node-row:hover{background:var(--glass)}
+.node-row:last-child{border-bottom:none}
+.node-indicator{width:6px;height:30px;border-radius:3px;flex-shrink:0}
+.ni-ok{background:var(--emerald);box-shadow:0 0 8px var(--emerald)}
+.ni-warn{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.ni-danger{background:var(--red);box-shadow:0 0 8px var(--red)}
+.node-info{flex:1}
+.node-name{font-size:.75rem;font-weight:500}
+.node-loc{font-size:.62rem;color:var(--ts);margin-top:.1rem}
+.node-readings{display:flex;gap:.75rem}
+.node-r{text-align:center}
+.nr-val{font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500}
+.nr-label{font-size:.58rem;color:var(--tm);margin-top:.05rem}
+
+/* ─── ACTIVITY FEED ─── */
+.feed-item{
+  display:flex;gap:.6rem;padding:.45rem 0;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.feed-item:last-child{border-bottom:none}
+.feed-dot{width:6px;height:6px;border-radius:50%;margin-top:.3rem;flex-shrink:0}
+.feed-dot-red{background:var(--red);box-shadow:0 0 6px var(--red)}
+.feed-dot-amber{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.feed-dot-cyan{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+.feed-dot-green{background:var(--emerald);box-shadow:0 0 6px var(--emerald)}
+.feed-content{flex:1}
+.feed-text{font-size:.72rem;line-height:1.4;color:var(--tp)}
+.feed-time{font-size:.6rem;color:var(--tm);margin-top:.1rem;font-family:'JetBrains Mono',monospace}
+
+/* ─── KPI STRIP ─── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:.6rem;grid-column:1/-1}
+.kpi{
+  padding:.6rem .875rem;border-radius:8px;
+  background:var(--bg2);border:1px solid var(--glass-b);
+}
+.kpi-label{font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tm);margin-bottom:.3rem}
+.kpi-val{font-family:'Space Grotesk',sans-serif;font-size:1.4rem;font-weight:700;line-height:1}
+.kpi-sub{font-size:.62rem;color:var(--ts);margin-top:.2rem}
+
+/* ─── WEATHER ─── */
+.weather-big{font-family:'Space Grotesk',sans-serif;font-size:2rem;font-weight:600;margin:.25rem 0}
+.weather-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:.72rem}
+.weather-row:last-child{border-bottom:none}
+.weather-lbl{color:var(--ts)}
+.forecast-row{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
+.fc-day{text-align:center;flex:1;min-width:28px}
+.fc-day-name{font-size:.6rem;color:var(--tm)}
+.fc-day-icon{font-size:.9rem;margin:.1rem 0}
+.fc-day-temp{font-size:.65rem;font-weight:500}
+
+/* ─── AI INSIGHTS ─── */
+.ai-insight{
+  display:flex;gap:.5rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:.72rem;line-height:1.5;color:var(--ts);
+}
+.ai-insight:last-child{border-bottom:none}
+.ai-bullet{color:var(--cyan);flex-shrink:0;margin-top:.05rem}
+
+/* ─── ALERTS TABLE ─── */
+.alert-table{width:100%;border-collapse:collapse}
+.alert-table th{font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--tm);padding:.4rem .75rem;text-align:left;border-bottom:1px solid var(--glass-b)}
+.alert-table td{padding:.5rem .75rem;font-size:.72rem;border-bottom:1px solid rgba(255,255,255,0.04)}
+.alert-table tr:last-child td{border-bottom:none}
+.alert-table tr:hover td{background:var(--glass)}
+.sev-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .5rem;border-radius:3px;font-size:.6rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sev-critical{background:rgba(255,77,109,0.12);color:var(--red);border:1px solid rgba(255,77,109,0.2)}
+.sev-warning{background:rgba(255,181,71,0.12);color:var(--amber);border:1px solid rgba(255,181,71,0.2)}
+.sev-normal{background:rgba(0,255,163,0.1);color:var(--emerald);border:1px solid rgba(0,255,163,0.2)}
+.act-badge{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.6rem;background:rgba(255,255,255,0.06);color:var(--ts)}
+
+/* ─── ANALYTICS ─── */
+#view-analytics{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr 1fr}
+.chart-box{position:relative;padding:.75rem .875rem;height:220px}
+
+/* ─── SATELLITE ─── */
+#view-satellite{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto}
+
+/* ─── SAT IMAGES ─── */
+.sat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding:.75rem}
+.sat-thumb{
+  border-radius:6px;overflow:hidden;border:1px solid var(--glass-b);
+  position:relative;cursor:pointer;transition:border-color .2s;
+}
+.sat-thumb:hover{border-color:rgba(0,217,255,0.3)}
+.sat-visual{width:100%;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+.sat-thumb-label{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:.25rem .5rem;background:linear-gradient(transparent,rgba(0,0,0,.8));
+  font-size:.6rem;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;
+}
+
+/* ─── RESTORATION ─── */
+#view-restoration{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}
+.rec-card{
+  padding:.875rem;border-radius:8px;background:var(--bg3);
+  border:1px solid var(--glass-b);margin-bottom:.5rem;
+  transition:border-color .2s;
+}
+.rec-card:hover{border-color:rgba(0,255,163,0.25)}
+.rec-card:last-child{margin-bottom:0}
+.rec-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.4rem}
+.rec-name{font-size:.8rem;font-weight:600}
+.p-badge{font-size:.58rem;font-weight:700;padding:.15rem .45rem;border-radius:3px;letter-spacing:.06em;text-transform:uppercase}
+.p1{background:rgba(255,77,109,0.12);color:var(--red)}
+.p2{background:rgba(255,181,71,0.12);color:var(--amber)}
+.p3{background:rgba(0,255,163,0.1);color:var(--emerald)}
+.rec-desc{font-size:.7rem;color:var(--ts);line-height:1.5;margin-bottom:.5rem}
+.rec-metrics{display:flex;gap:1rem}
+.rec-m{font-size:.65rem}
+.rec-m span{display:block;color:var(--tm);font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.1rem}
+
+/* ─── SCENARIO SIMULATOR ─── */
+#view-scenario{grid-template-columns:360px 1fr;grid-template-rows:auto 1fr}
+.sim-slider-row{padding:.5rem 0}
+.sim-label{font-size:.72rem;color:var(--ts);margin-bottom:.35rem;display:flex;justify-content:space-between}
+.sim-label span{font-family:'JetBrains Mono',monospace;color:var(--cyan)}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:3px;
+  background:rgba(255,255,255,0.1);border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px rgba(0,217,255,0.5);
+}
+.outcome-big{font-family:'Space Grotesk',sans-serif;font-size:3rem;font-weight:700;line-height:1}
+.outcome-delta{font-size:.8rem;margin-top:.25rem}
+.outcome-row{display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:.72rem}
+.outcome-row:last-child{border-bottom:none}
+.delta-pos{color:var(--emerald)} .delta-neg{color:var(--red)}
+
+/* ─── TECH ─── */
+#view-tech{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto}
+.arch-step{display:flex;gap:.75rem;padding:.5rem 0;position:relative}
+.arch-step:not(:last-child)::after{content:'';position:absolute;left:12px;top:28px;bottom:0;width:1px;background:var(--glass-b)}
+.arch-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+.arch-body .step-title{font-size:.78rem;font-weight:500;margin-bottom:.15rem}
+.arch-body .step-desc{font-size:.68rem;color:var(--ts);line-height:1.5}
+
+/* ─── AI CHAT ─── */
+.chat-messages{
+  height:240px;overflow-y:auto;padding:.75rem;
+  display:flex;flex-direction:column;gap:.5rem;
+  scrollbar-width:thin;scrollbar-color:rgba(0,217,255,0.15) transparent;
+}
+.msg{max-width:85%;padding:.55rem .8rem;border-radius:8px;font-size:.75rem;line-height:1.5}
+.msg-ai{align-self:flex-start;background:rgba(255,255,255,0.04);border:1px solid var(--glass-b);border-bottom-left-radius:3px}
+.msg-user{align-self:flex-end;background:rgba(0,217,255,0.1);border:1px solid rgba(0,217,255,0.2);border-bottom-right-radius:3px}
+.chat-chips{display:flex;gap:.4rem;flex-wrap:wrap;padding:.5rem .75rem;border-top:1px solid var(--glass-b)}
+.chip{
+  padding:.25rem .65rem;border-radius:20px;font-size:.65rem;cursor:pointer;
+  background:rgba(0,217,255,0.06);border:1px solid rgba(0,217,255,0.15);color:var(--ts);
+  transition:all .15s;
+}
+.chip:hover{background:rgba(0,217,255,0.12);color:var(--cyan)}
+.chat-input-row{display:flex;gap:.5rem;padding:.5rem .75rem .75rem}
+.chat-inp{
+  flex:1;padding:.45rem .75rem;border-radius:6px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--glass-b);
+  color:var(--tp);font-size:.75rem;font-family:'Inter',sans-serif;outline:none;
+  transition:border-color .2s;
+}
+.chat-inp:focus{border-color:rgba(0,217,255,0.3)}
+.chat-inp::placeholder{color:var(--tm)}
+.chat-send{
+  padding:.45rem .875rem;border-radius:6px;
+  background:rgba(0,217,255,0.12);border:1px solid rgba(0,217,255,0.25);
+  color:var(--cyan);font-size:.75rem;font-weight:600;cursor:pointer;
+  transition:all .15s;white-space:nowrap;
+}
+.chat-send:hover{background:rgba(0,217,255,0.22)}
+
+/* ─── FLOATING AI ─── */
+.float-ai{
+  position:fixed;bottom:1.25rem;right:1.25rem;z-index:999;
+  width:44px;height:44px;border-radius:12px;
+  background:linear-gradient(135deg,rgba(0,217,255,0.25),rgba(0,255,163,0.2));
+  border:1px solid rgba(0,217,255,0.4);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:1.1rem;
+  box-shadow:0 4px 20px rgba(0,217,255,0.2);
+  transition:all .2s;
+}
+.float-ai:hover{transform:scale(1.08);box-shadow:0 4px 30px rgba(0,217,255,0.35)}
+
+/* ─── MISC ─── */
+.span2{grid-column:1/-1}
+.monospace{font-family:'JetBrains Mono',monospace}
+.section-head{grid-column:1/-1;padding:.1rem 0 .25rem}
+.section-head h2{font-family:'Space Grotesk',sans-serif;font-size:.9rem;font-weight:600;margin-bottom:.1rem}
+.section-head p{font-size:.7rem;color:var(--ts)}
+canvas{display:block}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ─── TOP BAR ─── -->
+<header class="topbar">
+  <div class="logo-area">
+    <div class="logo-dot"></div>
+    <span class="logo-text">Pragathi Lake</span>
+  </div>
+  <div class="topbar-pills">
+    <span class="pill pill-on"><span class="sdot pulse"></span>Monitoring Active</span>
+    <span class="pill pill-on"><span class="sdot"></span>3 Sensors Online</span>
+    <span class="pill pill-info"><span class="sdot"></span>AI Models Running</span>
+    <span class="pill pill-warn"><span class="sdot pulse"></span>3 Alerts</span>
+    <span class="pill pill-info"><span class="sdot"></span>Satellite Sync</span>
+  </div>
+  <div class="topbar-right">
+    <span class="clock" id="clock">--:--:--</span>
+    <span class="health-pill">WQI 42 · Moderate</span>
+  </div>
+</header>
+
+<!-- ─── SIDEBAR ─── -->
+<nav class="sidebar">
+  <div class="nav-section-label">Platform</div>
+  <div class="nav-item active" onclick="showView('mission',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    Mission Control
+    <span class="nav-badge">3</span>
+  </div>
+  <div class="nav-item" onclick="showView('analytics',this)">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Analytics
+  </div>
+  <div class="nav-item" onclick="showView('satellite',this)">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    Satellite
+  </div>
+  <div class="nav-item" onclick="showView('alerts',this)">
+    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Alert Center
+    <span class="nav-badge">3</span>
+  </div>
+  <div class="nav-item" onclick="showView('restoration',this)">
+    <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Restoration
+  </div>
+  <div class="nav-item" onclick="showView('scenario',this)">
+    <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+    Scenario Sim
+  </div>
+
+  <div class="nav-section-label">System</div>
+  <div class="nav-item" onclick="showView('tech',this)">
+    <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+    Tech Stack
+  </div>
+  <div class="nav-item" onclick="showView('ai',this)">
+    <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    AI Assistant
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sat-sync">
+      <div style="color:var(--ts);margin-bottom:.2rem">Last satellite pass</div>
+      <div style="color:var(--cyan);font-family:'JetBrains Mono',monospace">06:00 AM today</div>
+      <div style="margin-top:.35rem;font-size:.58rem;color:var(--tm)">Sentinel-2 · 10m resolution</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ─────────────────────────────────────
+  MISSION CONTROL
+───────────────────────────────────────── -->
+<main class="main">
+<div class="view active" id="view-mission">
+
+  <!-- KPI strip -->
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-label">Health Score</div><div class="kpi-val c-amber" id="kpi-wqi">42</div><div class="kpi-sub">Moderate degradation</div></div>
+    <div class="kpi"><div class="kpi-label">Dissolved O₂</div><div class="kpi-val c-red" id="kpi-do">3.2</div><div class="kpi-sub">mg/L · Node B critical</div></div>
+    <div class="kpi"><div class="kpi-label">Active Alerts</div><div class="kpi-val c-red">3</div><div class="kpi-sub">1 critical · 2 warnings</div></div>
+    <div class="kpi"><div class="kpi-label">Waste Collected</div><div class="kpi-val c-green">12 kg</div><div class="kpi-sub">Robot active today</div></div>
+    <div class="kpi"><div class="kpi-label">Bloom Risk</div><div class="kpi-val c-red">78%</div><div class="kpi-sub">14-day horizon</div></div>
+  </div>
+
+  <!-- LEFT: Lake Map + Nodes -->
+  <div style="display:flex;flex-direction:column;gap:.6rem">
+
+    <!-- Lake visual -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Digital Twin · Live State</span>
+        <span class="panel-badge sev-warning">Moderate</span>
+      </div>
+      <div style="padding:.5rem .875rem .875rem">
+        <svg viewBox="0 0 280 180" style="width:100%;border-radius:6px;background:linear-gradient(135deg,#07182e,#0a2240,#061525)">
+          <!-- lake body -->
+          <defs>
+            <radialGradient id="lg" cx="50%" cy="55%" r="50%"><stop offset="0%" stop-color="#1a5080" stop-opacity=".85"/><stop offset="70%" stop-color="#0d2e4a" stop-opacity=".7"/><stop offset="100%" stop-color="#050816" stop-opacity=".5"/></radialGradient>
+            <radialGradient id="ag" cx="35%" cy="45%" r="45%"><stop offset="0%" stop-color="#1a5e20" stop-opacity=".5"/><stop offset="100%" stop-color="#0d2e4a" stop-opacity="0"/></radialGradient>
+          </defs>
+          <ellipse cx="140" cy="100" rx="115" ry="70" fill="url(#lg)"/>
+          <ellipse cx="110" cy="90" rx="45" ry="30" fill="url(#ag)"/>
+          <!-- shimmer -->
+          <path d="M80 85 Q110 80 140 88" stroke="rgba(0,217,255,0.12)" stroke-width="1" fill="none"/>
+          <path d="M100 100 Q130 95 165 102" stroke="rgba(0,217,255,0.08)" stroke-width=".8" fill="none"/>
+          <!-- algae label -->
+          <rect x="70" y="58" width="62" height="14" rx="3" fill="rgba(255,77,109,0.15)" stroke="rgba(255,77,109,0.3)" stroke-width=".5"/>
+          <text x="101" y="68" text-anchor="middle" fill="#FF4D6D" font-size="6.5" font-family="Inter">⚠ Algae Zone</text>
+          <!-- Node A -->
+          <circle cx="62" cy="72" r="6" fill="rgba(0,255,163,0.15)" stroke="#00FFA3" stroke-width="1.2"/>
+          <circle cx="62" cy="72" r="2.5" fill="#00FFA3"/>
+          <text x="72" y="70" fill="#9FE1CB" font-size="6" font-family="Inter">Node A</text>
+          <text x="72" y="78" fill="#5a8a78" font-size="5.5" font-family="JetBrains Mono">pH 7.1</text>
+          <!-- Node B (alert) -->
+          <circle cx="148" cy="105" r="7" fill="rgba(255,77,109,0.2)" stroke="#FF4D6D" stroke-width="1.2"/>
+          <circle cx="148" cy="105" r="3" fill="#FF4D6D"/>
+          <text x="158" y="103" fill="#FF9FAF" font-size="6" font-family="Inter">Node B ⚠</text>
+          <text x="158" y="111" fill="#a05060" font-size="5.5" font-family="JetBrains Mono">DO 3.2!</text>
+          <!-- Node C -->
+          <circle cx="200" cy="140" r="6" fill="rgba(0,255,163,0.15)" stroke="#00FFA3" stroke-width="1.2"/>
+          <circle cx="200" cy="140" r="2.5" fill="#00FFA3"/>
+          <text x="210" y="138" fill="#9FE1CB" font-size="6" font-family="Inter">Node C</text>
+          <text x="210" y="146" fill="#5a8a78" font-size="5.5" font-family="JetBrains Mono">DO 5.1</text>
+          <!-- Robot -->
+          <circle cx="170" cy="88" r="5" fill="rgba(0,217,255,0.15)" stroke="#00D9FF" stroke-width="1"/>
+          <text x="164" y="92" fill="#00D9FF" font-size="6.5">🤖</text>
+          <text x="178" y="87" fill="#6ab0c0" font-size="5.5" font-family="Inter">Robot</text>
+          <!-- Aerator -->
+          <circle cx="120" cy="115" r="4" fill="rgba(79,158,255,0.2)" stroke="#4F9EFF" stroke-width="1"/>
+          <text x="127" y="119" fill="#6090c0" font-size="5.5" font-family="Inter">Aerator</text>
+          <!-- Discharge -->
+          <path d="M250 130 L228 120" stroke="rgba(255,77,109,0.4)" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <circle cx="250" cy="130" r="4" fill="rgba(255,77,109,0.2)" stroke="#FF4D6D" stroke-width="1"/>
+          <text x="220" y="116" fill="#a04050" font-size="5.5" font-family="Inter">Discharge</text>
+          <!-- solar -->
+          <rect x="16" y="24" width="32" height="18" rx="2" fill="rgba(255,181,71,0.12)" stroke="rgba(255,181,71,0.2)" stroke-width=".5"/>
+          <text x="32" y="36" text-anchor="middle" fill="#c09040" font-size="6" font-family="Inter">☀ Solar</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Nodes -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">IoT Sensor Nodes</span></div>
+      <div class="node-row">
+        <div class="node-indicator ni-ok"></div>
+        <div class="node-info">
+          <div class="node-name">Node A — North Inlet</div>
+          <div class="node-loc">Sewage channel entry</div>
+        </div>
+        <div class="node-readings">
+          <div class="node-r"><div class="nr-val c-green" id="na-ph">7.1</div><div class="nr-label">pH</div></div>
+          <div class="node-r"><div class="nr-val c-green" id="na-do">5.4</div><div class="nr-label">DO</div></div>
+          <div class="node-r"><div class="nr-val c-amber" id="na-t">58</div><div class="nr-label">NTU</div></div>
+          <div class="node-r"><div class="nr-val" id="na-temp">28.2</div><div class="nr-label">°C</div></div>
+        </div>
+      </div>
+      <div class="node-row">
+        <div class="node-indicator ni-danger"></div>
+        <div class="node-info">
+          <div class="node-name">Node B — Lake Centre ⚠</div>
+          <div class="node-loc">Mid-lake, deepest point</div>
+        </div>
+        <div class="node-readings">
+          <div class="node-r"><div class="nr-val c-green" id="nb-ph">6.6</div><div class="nr-label">pH</div></div>
+          <div class="node-r"><div class="nr-val c-red" id="nb-do">3.2</div><div class="nr-label">DO</div></div>
+          <div class="node-r"><div class="nr-val c-amber" id="nb-t">71</div><div class="nr-label">NTU</div></div>
+          <div class="node-r"><div class="nr-val c-amber" id="nb-temp">29.8</div><div class="nr-label">°C</div></div>
+        </div>
+      </div>
+      <div class="node-row">
+        <div class="node-indicator ni-ok"></div>
+        <div class="node-info">
+          <div class="node-name">Node C — South Outlet</div>
+          <div class="node-loc">Stormwater drain exit</div>
+        </div>
+        <div class="node-readings">
+          <div class="node-r"><div class="nr-val c-green" id="nc-ph">7.4</div><div class="nr-label">pH</div></div>
+          <div class="node-r"><div class="nr-val c-green" id="nc-do">5.1</div><div class="nr-label">DO</div></div>
+          <div class="node-r"><div class="nr-val c-green" id="nc-t">44</div><div class="nr-label">NTU</div></div>
+          <div class="node-r"><div class="nr-val" id="nc-temp">27.5</div><div class="nr-label">°C</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Health + Parameters + Charts -->
+  <div style="display:flex;flex-direction:column;gap:.6rem">
+
+    <!-- Health gauge + params -->
+    <div class="panel" style="display:grid;grid-template-columns:180px 1fr">
+      <div class="gauge-center" style="border-right:1px solid var(--glass-b)">
+        <svg viewBox="0 0 160 100" style="width:160px">
+          <defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#FF4D6D"/><stop offset="45%" stop-color="#FFB547"/><stop offset="100%" stop-color="#00FFA3"/></linearGradient></defs>
+          <path d="M20 85 A60 60 0 0 1 140 85" stroke="rgba(255,255,255,0.06)" stroke-width="9" fill="none" stroke-linecap="round"/>
+          <path d="M20 85 A60 60 0 0 1 140 85" stroke="url(#gg)" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="188" stroke-dashoffset="113" id="gauge-arc"/>
+          <line x1="80" y1="85" x2="38" y2="46" stroke="#FFB547" stroke-width="2" stroke-linecap="round" id="gauge-needle"/>
+          <circle cx="80" cy="85" r="4" fill="#FFB547"/>
+        </svg>
+        <div class="gauge-val">42</div>
+        <div class="gauge-label">WQI · Health Score</div>
+        <div class="gauge-status">⚠ Moderate</div>
+      </div>
+      <div style="padding:.75rem .875rem">
+        <div class="param-row">
+          <span class="param-name">pH Level</span>
+          <span class="param-val c-blue" id="p-ph">6.9</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-blue" style="width:69%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">Dissolved O₂</span>
+          <span class="param-val c-red" id="p-do">3.8</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-red" style="width:38%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">Turbidity</span>
+          <span class="param-val c-amber" id="p-turb">62</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-amber" style="width:62%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">TDS</span>
+          <span class="param-val c-green" id="p-tds">387</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-green" style="width:45%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">Temperature</span>
+          <span class="param-val c-amber" id="p-temp">28.9</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-amber" style="width:58%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">Phosphate</span>
+          <span class="param-val c-red">2.1 mg/L</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-red" style="width:84%"></div></div>
+        </div>
+        <div class="param-row">
+          <span class="param-name">Chlorophyll</span>
+          <span class="param-val c-amber">18 µg/L</span>
+          <div class="param-bar-wrap"><div class="param-bar-fill f-amber" style="width:45%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DO trend chart -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">DO + pH Trend — Last 24 h</span></div>
+      <div class="chart-box" style="height:170px"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <!-- AI Insights -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">AI Insights</span>
+        <span style="font-size:.6rem;color:var(--cyan);font-family:'JetBrains Mono',monospace">Confidence 87%</span>
+      </div>
+      <div style="padding:.6rem .875rem">
+        <div class="ai-insight"><span class="ai-bullet">▸</span>Algal bloom probability rising — phosphate at 2.1 mg/L exceeds safe threshold. Bloom likely within 14 days.</div>
+        <div class="ai-insight"><span class="ai-bullet">▸</span>Node B dissolved oxygen at 3.2 mg/L — fish kill risk. Immediate aerator ramp-up recommended.</div>
+        <div class="ai-insight"><span class="ai-bullet">▸</span>WQI forecast: 38 in 7 days, 31 in 30 days without intervention.</div>
+        <div class="ai-insight"><span class="ai-bullet">▸</span>Monsoon rainfall may temporarily dilute TDS but risks sewage overflow at north inlet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Activity feed + Weather -->
+  <div style="display:flex;flex-direction:column;gap:.6rem">
+
+    <!-- Weather -->
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Hyderabad Weather</span></div>
+      <div style="padding:.6rem .875rem">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem">
+          <span style="font-size:1.6rem">⛅</span>
+          <div>
+            <div class="weather-big">29°C</div>
+            <div style="font-size:.65rem;color:var(--ts)">Partly cloudy</div>
+          </div>
+        </div>
+        <div class="weather-row"><span class="weather-lbl">Humidity</span><span>78%</span></div>
+        <div class="weather-row"><span class="weather-lbl">Rainfall</span><span style="color:var(--blue)">13 mm</span></div>
+        <div class="weather-row"><span class="weather-lbl">Wind</span><span>8 km/h SW</span></div>
+        <div class="weather-row"><span class="weather-lbl">Lake Impact</span><span style="color:var(--amber)">Moderate runoff risk</span></div>
+        <div class="forecast-row">
+          <div class="fc-day"><div class="fc-day-name">Mon</div><div class="fc-day-icon">⛅</div><div class="fc-day-temp">30°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Tue</div><div class="fc-day-icon">🌧</div><div class="fc-day-temp">27°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Wed</div><div class="fc-day-icon">🌧</div><div class="fc-day-temp">26°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Thu</div><div class="fc-day-icon">⛅</div><div class="fc-day-temp">29°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Fri</div><div class="fc-day-icon">☀</div><div class="fc-day-temp">31°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Sat</div><div class="fc-day-icon">⛅</div><div class="fc-day-temp">30°</div></div>
+          <div class="fc-day"><div class="fc-day-name">Sun</div><div class="fc-day-icon">🌧</div><div class="fc-day-temp">28°</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity feed -->
+    <div class="panel" style="flex:1">
+      <div class="panel-head">
+        <span class="panel-title">Activity Feed</span>
+        <span class="sdot dot-live" style="width:5px;height:5px;border-radius:50%;background:var(--emerald);box-shadow:0 0 5px var(--emerald);animation:blink 1.4s infinite"></span>
+      </div>
+      <div style="padding:.5rem .875rem;overflow-y:auto;max-height:calc(100vh - 340px)" id="feed">
+        <div class="feed-item"><div class="feed-dot feed-dot-red"></div><div class="feed-content"><div class="feed-text">Node B: DO 3.2 mg/L — fish kill risk</div><div class="feed-time">09:14</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-cyan"></div><div class="feed-content"><div class="feed-text">Sentinel-2 satellite pass complete</div><div class="feed-time">06:00</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-amber"></div><div class="feed-content"><div class="feed-text">Aerators ramped to full capacity</div><div class="feed-time">05:42</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-amber"></div><div class="feed-content"><div class="feed-text">AI prediction generated — WQI 38 forecast</div><div class="feed-time">05:30</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-red"></div><div class="feed-content"><div class="feed-text">Phosphate spike — 2.1 mg/L at north inlet</div><div class="feed-time">03:20</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-green"></div><div class="feed-content"><div class="feed-text">Robot collected 3.8 kg debris</div><div class="feed-time">02:15</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-cyan"></div><div class="feed-content"><div class="feed-text">Rainfall event 13 mm — TDS declining</div><div class="feed-time">Yesterday</div></div></div>
+        <div class="feed-item"><div class="feed-dot feed-dot-green"></div><div class="feed-content"><div class="feed-text">Robot maintenance complete, battery 100%</div><div class="feed-time">Yesterday</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  ANALYTICS
+───────────────────────────────────────── -->
+<div class="view" id="view-analytics">
+  <div class="section-head"><h2>Environmental Analytics</h2><p>Historical trends across all water quality parameters</p></div>
+
+  <div class="panel"><div class="panel-head"><span class="panel-title">Water Quality Index — 30 Days</span></div><div class="chart-box"><canvas id="wqiChart"></canvas></div></div>
+  <div class="panel"><div class="panel-head"><span class="panel-title">Dissolved Oxygen Trend</span></div><div class="chart-box"><canvas id="doChart"></canvas></div></div>
+  <div class="panel"><div class="panel-head"><span class="panel-title">Water Quality Radar</span></div><div class="chart-box" style="height:220px"><canvas id="radarChart"></canvas></div></div>
+  <div class="panel"><div class="panel-head"><span class="panel-title">Parameter Heatmap — Anomaly Score</span></div><div class="chart-box"><canvas id="heatChart"></canvas></div></div>
+</div>
+
+<!-- ─────────────────────────────────────
+  SATELLITE
+───────────────────────────────────────── -->
+<div class="view" id="view-satellite" style="grid-template-columns:1fr 1fr;gap:.6rem">
+  <div class="section-head"><h2>Satellite Intelligence</h2><p>Sentinel-2 multispectral analysis — updated daily</p></div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Spectral Bands</span></div>
+    <div class="sat-grid">
+      <div class="sat-thumb">
+        <div class="sat-visual" style="background:linear-gradient(135deg,#1a3a5c,#0d2233)"><svg width="70" height="52" viewBox="0 0 70 52"><ellipse cx="35" cy="26" rx="26" ry="17" fill="rgba(0,100,180,0.5)"/></svg></div>
+        <div class="sat-thumb-label">True Color (RGB)</div>
+      </div>
+      <div class="sat-thumb">
+        <div class="sat-visual" style="background:linear-gradient(135deg,#001a3a,#003366)"><svg width="70" height="52" viewBox="0 0 70 52"><ellipse cx="35" cy="26" rx="26" ry="17" fill="rgba(0,200,255,0.6)"/></svg></div>
+        <div class="sat-thumb-label">NDWI (Water Index)</div>
+      </div>
+      <div class="sat-thumb">
+        <div class="sat-visual" style="background:linear-gradient(135deg,#0a1f0a,#0d2e0d)"><svg width="70" height="52" viewBox="0 0 70 52"><ellipse cx="35" cy="26" rx="26" ry="17" fill="rgba(0,100,50,0.4)"/><ellipse cx="48" cy="34" rx="12" ry="8" fill="rgba(0,200,100,0.5)"/></svg></div>
+        <div class="sat-thumb-label">Vegetation (NDVI)</div>
+      </div>
+      <div class="sat-thumb">
+        <div class="sat-visual" style="background:linear-gradient(135deg,#1a0a2e,#0d1a3a)"><svg width="70" height="52" viewBox="0 0 70 52"><ellipse cx="35" cy="26" rx="26" ry="17" fill="rgba(180,0,255,0.35)"/><ellipse cx="22" cy="20" rx="10" ry="7" fill="rgba(255,100,0,0.4)"/></svg></div>
+        <div class="sat-thumb-label">False Color (IR)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Remote Sensing Metrics</span></div>
+    <div style="padding:.75rem .875rem">
+      <div class="param-row"><span class="param-name">Water Spread</span><span class="param-val c-cyan">14.2 ha</span><div class="param-bar-wrap"><div class="param-bar-fill f-cyan" style="width:71%"></div></div></div>
+      <div class="param-row"><span class="param-name">Vegetation Cover</span><span class="param-val c-green">23%</span><div class="param-bar-wrap"><div class="param-bar-fill f-green" style="width:23%"></div></div></div>
+      <div class="param-row"><span class="param-name">Bloom Probability</span><span class="param-val c-red">78%</span><div class="param-bar-wrap"><div class="param-bar-fill f-red" style="width:78%"></div></div></div>
+      <div class="param-row"><span class="param-name">Turbidity (NDTI)</span><span class="param-val c-amber">High</span><div class="param-bar-wrap"><div class="param-bar-fill f-amber" style="width:72%"></div></div></div>
+      <div class="param-row"><span class="param-name">Area Trend 3mo</span><span class="param-val c-red">↓ 8%</span><div class="param-bar-wrap"><div class="param-bar-fill f-red" style="width:40%"></div></div></div>
+    </div>
+    <div class="panel-head" style="border-top:1px solid var(--glass-b)"><span class="panel-title">Water Spread — 7 Year Trend</span></div>
+    <div class="chart-box" style="height:160px"><canvas id="satTrend"></canvas></div>
+  </div>
+
+  <div class="panel span2">
+    <div class="panel-head"><span class="panel-title">⚠ Algal Bloom Signature Detected</span><span class="sev-badge sev-critical">High Risk</span></div>
+    <div style="padding:.6rem .875rem;font-size:.75rem;color:var(--ts)">Chlorophyll-a elevated in northwest quadrant. Bloom classification probability <strong style="color:var(--red)">78%</strong> based on band ratio analysis. Surface temperature anomaly of +1.8°C. Recommend immediate aeration intervention and phosphate source monitoring.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  ALERTS
+───────────────────────────────────────── -->
+<div class="view" id="view-alerts" style="grid-template-columns:1fr;gap:.6rem">
+  <div class="section-head"><h2>Alert Command Center</h2><p>All active and historical alerts with AI-generated context</p></div>
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Active Alerts</span><span class="sev-badge sev-critical">3 Open</span></div>
+    <table class="alert-table">
+      <thead><tr><th>Severity</th><th>Issue</th><th>Location</th><th>Confidence</th><th>Detected</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><span class="sev-badge sev-critical">Critical</span></td><td>DO below 4 mg/L — fish kill risk</td><td>Node B · Lake Centre</td><td>94%</td><td>09:14 AM</td><td><span class="sev-badge sev-critical">Active</span></td><td><span class="act-badge">Aerator ↑</span></td></tr>
+        <tr><td><span class="sev-badge sev-warning">Warning</span></td><td>Phosphate spike — bloom trigger</td><td>Node A · North Inlet</td><td>87%</td><td>03:20 AM</td><td><span class="sev-badge sev-critical">Active</span></td><td><span class="act-badge">Monitor</span></td></tr>
+        <tr><td><span class="sev-badge sev-warning">Warning</span></td><td>Turbidity exceeds threshold 71 NTU</td><td>Node B · Lake Centre</td><td>71%</td><td>Yesterday</td><td><span class="sev-badge sev-critical">Active</span></td><td><span class="act-badge">Investigate</span></td></tr>
+        <tr><td><span class="sev-badge sev-normal">Normal</span></td><td>pH stable across all nodes</td><td>All Nodes</td><td>99%</td><td>Live</td><td><span class="sev-badge sev-normal">Closed</span></td><td>—</td></tr>
+        <tr><td><span class="sev-badge sev-normal">Normal</span></td><td>Robot battery 82% — operational</td><td>Lake Surface</td><td>100%</td><td>Live</td><td><span class="sev-badge sev-normal">Closed</span></td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  RESTORATION
+───────────────────────────────────────── -->
+<div class="view" id="view-restoration" style="grid-template-columns:1fr 1fr;gap:.6rem">
+  <div class="section-head"><h2>Restoration Intelligence</h2><p>Evidence-based intervention chain: problem → prediction → action → outcome</p></div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Priority Interventions</span></div>
+    <div style="padding:.75rem .875rem">
+      <div class="rec-card">
+        <div class="rec-head"><span class="rec-name">Solar Aeration</span><span class="p-badge p1">P1 Critical</span></div>
+        <div class="rec-desc">Deploy floating aerators to raise DO and restore aerobic biology across the lake body.</div>
+        <div class="rec-metrics"><div class="rec-m"><span>DO Gain</span>+2.8 mg/L</div><div class="rec-m"><span>Timeline</span>4–6 wks</div><div class="rec-m"><span>Cost</span>~₹45k</div></div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-head"><span class="rec-name">Gambusia Biocontrol</span><span class="p-badge p1">P1 Critical</span></div>
+        <div class="rec-desc">Introduce mosquitofish to eliminate larvae biologically — no pesticides needed.</div>
+        <div class="rec-metrics"><div class="rec-m"><span>Larval Reduction</span>80%+</div><div class="rec-m"><span>Timeline</span>2–4 wks</div><div class="rec-m"><span>Cost</span>~₹8k</div></div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-head"><span class="rec-name">Desilting Programme</span><span class="p-badge p2">P2 High</span></div>
+        <div class="rec-desc">Mechanical dredging to restore lake depth and increase water volume capacity by 40%.</div>
+        <div class="rec-metrics"><div class="rec-m"><span>Volume Recovery</span>+40%</div><div class="rec-m"><span>Timeline</span>3 months</div><div class="rec-m"><span>Cost</span>~₹3.5L</div></div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-head"><span class="rec-name">Wetland Buffer Zones</span><span class="p-badge p2">P2 High</span></div>
+        <div class="rec-desc">Native macrophyte planting to filter runoff and stabilise the shoreline.</div>
+        <div class="rec-metrics"><div class="rec-m"><span>Phosphate Filter</span>−35%</div><div class="rec-m"><span>Timeline</span>6 months</div><div class="rec-m"><span>Cost</span>~₹60k</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Diagnosis Chain</span></div>
+    <div style="padding:.75rem .875rem">
+      <div style="font-size:.7rem;color:var(--ts);margin-bottom:.75rem">Problem → Prediction → Intervention → Expected Outcome</div>
+      <div style="display:flex;flex-direction:column;gap:.35rem">
+        <div style="padding:.6rem .875rem;border-radius:6px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.15);font-size:.72rem">🔴 <strong>High Phosphate (2.1 mg/L)</strong></div>
+        <div style="display:flex;justify-content:center;color:var(--tm);font-size:.7rem">↓ triggers</div>
+        <div style="padding:.6rem .875rem;border-radius:6px;background:rgba(255,181,71,0.08);border:1px solid rgba(255,181,71,0.15);font-size:.72rem">⚠ <strong>Algal Bloom Risk 78%</strong> within 14 days</div>
+        <div style="display:flex;justify-content:center;color:var(--tm);font-size:.7rem">↓ recommended intervention</div>
+        <div style="padding:.6rem .875rem;border-radius:6px;background:rgba(0,217,255,0.06);border:1px solid rgba(0,217,255,0.15);font-size:.72rem">🔵 <strong>Aeration + Wetland Buffer + Debris Removal</strong></div>
+        <div style="display:flex;justify-content:center;color:var(--tm);font-size:.7rem">↓ predicted outcome</div>
+        <div style="padding:.6rem .875rem;border-radius:6px;background:rgba(0,255,163,0.08);border:1px solid rgba(0,255,163,0.2);font-size:.72rem">✅ <strong>Bloom risk → 42%</strong> · WQI → 62 in 90 days</div>
+      </div>
+    </div>
+    <div class="panel-head" style="border-top:1px solid var(--glass-b)"><span class="panel-title">SDG Alignment</span></div>
+    <div style="padding:.6rem .875rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <span style="padding:.3rem .7rem;border-radius:4px;font-size:.65rem;font-weight:600;background:rgba(79,158,255,0.1);color:var(--blue)">SDG 3 Good Health</span>
+      <span style="padding:.3rem .7rem;border-radius:4px;font-size:.65rem;font-weight:600;background:rgba(0,217,255,0.1);color:var(--cyan)">SDG 6 Clean Water</span>
+      <span style="padding:.3rem .7rem;border-radius:4px;font-size:.65rem;font-weight:600;background:rgba(0,255,163,0.1);color:var(--emerald)">SDG 11 Cities</span>
+      <span style="padding:.3rem .7rem;border-radius:4px;font-size:.65rem;font-weight:600;background:rgba(255,181,71,0.1);color:var(--amber)">SDG 13 Climate</span>
+      <span style="padding:.3rem .7rem;border-radius:4px;font-size:.65rem;font-weight:600;background:rgba(79,158,255,0.1);color:var(--blue)">SDG 14 Water Life</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  SCENARIO SIMULATOR  ← wow factor
+───────────────────────────────────────── -->
+<div class="view" id="view-scenario" style="grid-template-columns:340px 1fr;gap:.6rem">
+  <div class="section-head"><h2>Scenario Simulator</h2><p>Adjust interventions to predict future lake health outcomes</p></div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Intervention Controls</span></div>
+    <div style="padding:.75rem .875rem">
+      <div class="sim-slider-row">
+        <div class="sim-label">Aerators deployed <span id="lbl-aer">0</span></div>
+        <input type="range" min="0" max="6" value="0" id="sl-aer" oninput="runSim()">
+      </div>
+      <div class="sim-slider-row">
+        <div class="sim-label">Desilting depth (m) <span id="lbl-silt">0</span></div>
+        <input type="range" min="0" max="2" step="0.25" value="0" id="sl-silt" oninput="runSim()">
+      </div>
+      <div class="sim-slider-row">
+        <div class="sim-label">Wetland buffer (m coverage) <span id="lbl-wet">0</span></div>
+        <input type="range" min="0" max="500" step="50" value="0" id="sl-wet" oninput="runSim()">
+      </div>
+      <div class="sim-slider-row">
+        <div class="sim-label">Gambusia introduction <span id="lbl-fish">None</span></div>
+        <input type="range" min="0" max="3" value="0" id="sl-fish" oninput="runSim()">
+      </div>
+      <div class="sim-slider-row">
+        <div class="sim-label">Sewage diversion (%) <span id="lbl-sew">0</span></div>
+        <input type="range" min="0" max="100" step="10" value="0" id="sl-sew" oninput="runSim()">
+      </div>
+      <div style="margin-top:1rem;padding:.75rem;border-radius:8px;background:var(--bg3);border:1px solid var(--glass-b);font-size:.7rem;color:var(--ts)">
+        Estimates derived from regression models trained on 3 years of sensor data and published restoration case studies for Indian urban lakes.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Predicted Outcomes</span></div>
+    <div style="padding:.75rem .875rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+      <div>
+        <div style="font-size:.65rem;color:var(--tm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem">Current WQI</div>
+        <div class="outcome-big c-amber">42</div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;color:var(--tm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.25rem">Predicted WQI</div>
+        <div class="outcome-big c-green" id="sim-wqi">42</div>
+        <div class="outcome-delta delta-pos" id="sim-delta">No interventions selected</div>
+      </div>
+    </div>
+    <div style="padding:.5rem .875rem">
+      <div class="outcome-row"><span style="color:var(--ts)">Bloom Risk</span><span id="sim-bloom" class="c-red">78% → 78%</span></div>
+      <div class="outcome-row"><span style="color:var(--ts)">Dissolved O₂</span><span id="sim-do" class="c-red">3.2 → 3.2 mg/L</span></div>
+      <div class="outcome-row"><span style="color:var(--ts)">Mosquito Risk</span><span id="sim-mosq" class="c-red">Severe → Severe</span></div>
+      <div class="outcome-row"><span style="color:var(--ts)">Phosphate</span><span id="sim-phos" class="c-red">2.1 → 2.1 mg/L</span></div>
+      <div class="outcome-row"><span style="color:var(--ts)">90-Day Outlook</span><span id="sim-out" class="c-amber">No change</span></div>
+    </div>
+    <div style="padding:.5rem .875rem .875rem">
+      <div class="chart-box" style="height:200px"><canvas id="simChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  TECH STACK
+───────────────────────────────────────── -->
+<div class="view" id="view-tech" style="grid-template-columns:1fr 1fr;gap:.6rem">
+  <div class="section-head"><h2>System Architecture</h2><p>IoT → LoRa → Cloud → AI → Dashboard</p></div>
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Hardware Layer</span></div>
+    <div style="padding:.75rem .875rem">
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(255,181,71,0.15)">☀</div><div class="arch-body"><div class="step-title">Solar Panel (5W)</div><div class="step-desc">Charges 3000 mAh LiPo. ~25 Wh/day at Hyderabad peak sunlight. Self-powered, floats anywhere on the lake.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(79,158,255,0.15)">🧠</div><div class="arch-body"><div class="step-title">Arduino Nano</div><div class="step-desc">Wakes every 60s, reads all 5 sensors, packages JSON payload, transmits via LoRa, sleeps. Sleep current ~20µA. Cost ₹350.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(0,255,163,0.15)">📡</div><div class="arch-body"><div class="step-title">LoRa SX1278 (5 km range)</div><div class="step-desc">433 MHz, 50 mW, no SIM card. Single gateway on the lake bund receives all 3 nodes. Module cost ₹450.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(0,217,255,0.15)">💧</div><div class="arch-body"><div class="step-title">5 Sensor Probes</div><div class="step-desc">pH, DO, turbidity (NTU), TDS, temperature. IP67 sealed. pH &lt;6.5 = sewage. DO &lt;5 = fish risk. DO &lt;2 = dead zone.</div></div></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><span class="panel-title">Software + Data Layer</span></div>
+    <div style="padding:.75rem .875rem">
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(79,158,255,0.15)">🖧</div><div class="arch-body"><div class="step-title">Gateway — Raspberry Pi 4</div><div class="step-desc">Receives LoRa packets, forwards to cloud via 4G + MQTT. Local SD fallback if cloud unreachable.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(0,255,163,0.15)">⚙</div><div class="arch-body"><div class="step-title">Backend — Node.js + TimescaleDB</div><div class="step-desc">Validates and stores readings. Runs threshold checks. Fires SMS/push alerts to GHMC officials via MQTT.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(255,181,71,0.15)">🤖</div><div class="arch-body"><div class="step-title">AI — Attention-LSTM + FastAPI</div><div class="step-desc">72-hour WQI prediction, bloom probability, anomaly detection. Monte Carlo dropout for uncertainty quantification.</div></div></div>
+      <div class="arch-step"><div class="arch-icon" style="background:rgba(0,217,255,0.15)">🛰</div><div class="arch-body"><div class="step-title">Remote Sensing — GEE + Sentinel-2</div><div class="step-desc">Google Earth Engine pipeline. NDWI, NDVI, chlorophyll-a band ratios. Daily automated processing at 10m resolution.</div></div></div>
+    </div>
+  </div>
+  <div class="panel span2">
+    <div class="panel-head"><span class="panel-title">Full System Cost Summary</span></div>
+    <table class="alert-table">
+      <thead><tr><th>Layer</th><th>What it does</th><th>Technology</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td>Sensor Node ×3</td><td>pH, DO, turbidity, TDS, temp every 60s</td><td>Arduino Nano + LoRa + Solar</td><td>~₹3,900 each</td></tr>
+        <tr><td>Gateway</td><td>LoRa → 4G → cloud bridge</td><td>Raspberry Pi 4 + 4G + antenna</td><td>~₹8,000</td></tr>
+        <tr><td>Backend</td><td>Data storage, alerts, MQTT</td><td>Node.js + TimescaleDB</td><td>₹0 (open source)</td></tr>
+        <tr><td>AI Models</td><td>Prediction + anomaly detection</td><td>PyTorch + FastAPI</td><td>₹0 (open source)</td></tr>
+        <tr><td>Satellite Pipeline</td><td>Daily imagery + spectral analysis</td><td>Google Earth Engine</td><td>₹0 (research tier)</td></tr>
+        <tr><td><strong>Total</strong></td><td>Complete end-to-end system</td><td>3 nodes + 1 gateway + software</td><td><strong>~₹39,300</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────
+  AI ASSISTANT
+───────────────────────────────────────── -->
+<div class="view" id="view-ai" style="grid-template-columns:1fr;gap:.6rem">
+  <div class="section-head"><h2>LakePulse AI Assistant</h2><p>Environmental intelligence trained on 3 years of sensor data and satellite imagery</p></div>
+  <div class="panel" style="max-width:760px">
+    <div class="panel-head">
+      <span class="panel-title">AI Chat</span>
+      <span style="font-size:.6rem;color:var(--emerald)">● Online</span>
+    </div>
+    <div class="chat-messages" id="chatBody">
+      <div class="msg msg-ai">Hello. I'm monitoring Pragathi Nagar Lake in real time. Current WQI is <strong>42/100</strong>. Node B dissolved oxygen is <strong>3.2 mg/L</strong> — critical. Algal bloom probability <strong>78%</strong> within 14 days. How can I help?</div>
+      <div class="msg msg-user">What is the main threat right now?</div>
+      <div class="msg msg-ai">Primary threat: <strong>Dissolved oxygen crash at Node B (3.2 mg/L)</strong> — fish kill risk. Secondary: phosphate at 2.1 mg/L driving eutrophication and bloom conditions. Aerators are running at full capacity. Recommend deploying additional floating aerator near lake centre and monitoring north inlet for sewage discharge.</div>
+    </div>
+    <div class="chat-chips">
+      <span class="chip" onclick="sendChat('What is the current lake health?')">Lake health</span>
+      <span class="chip" onclick="sendChat('Predict water quality next week')">7-day forecast</span>
+      <span class="chip" onclick="sendChat('Explain Node B alert')">Node B alert</span>
+      <span class="chip" onclick="sendChat('Best restoration actions')">Restoration plan</span>
+      <span class="chip" onclick="sendChat('Summarise satellite data')">Satellite summary</span>
+    </div>
+    <div class="chat-input-row">
+      <input class="chat-inp" id="chatInput" placeholder="Ask about the lake…" onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send" onclick="sendChat()">Send →</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Floating AI -->
+<div class="float-ai" onclick="showView('ai',null)" title="AI Assistant">🌊</div>
+
+<script>
+/* ─── CLOCK ─── */
+function tick(){const n=new Date();document.getElementById('clock').textContent=n.toLocaleTimeString('en-IN',{hour12:false})}
+tick();setInterval(tick,1000);
+
+/* ─── NAVIGATION ─── */
+function showView(id,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  if(el){document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));el.classList.add('active');}
+  if(id==='analytics')initAnalytics();
+  if(id==='satellite')initSatTrend();
+  if(id==='scenario')initSimChart();
+}
+
+/* ─── LIVE SENSOR TICK ─── */
+const rnd=(b,v,d=1)=>+(b+(Math.random()-.5)*v*2).toFixed(d);
+const irnd=(b,v)=>Math.round(b+(Math.random()-.5)*v*2);
+setInterval(()=>{
+  const na_do=rnd(5.4,.3);
+  document.getElementById('na-ph').textContent=rnd(7.1,.12);
+  document.getElementById('na-do').textContent=na_do;
+  document.getElementById('na-t').textContent=irnd(58,5);
+  document.getElementById('na-temp').textContent=rnd(28.2,.4);
+  const nb_do=rnd(3.2,.2);
+  document.getElementById('nb-ph').textContent=rnd(6.6,.1);
+  document.getElementById('nb-do').textContent=nb_do;
+  document.getElementById('nb-t').textContent=irnd(71,6);
+  document.getElementById('nb-temp').textContent=rnd(29.8,.5);
+  document.getElementById('nc-ph').textContent=rnd(7.4,.12);
+  document.getElementById('nc-do').textContent=rnd(5.1,.25);
+  document.getElementById('nc-t').textContent=irnd(44,4);
+  document.getElementById('nc-temp').textContent=rnd(27.5,.3);
+  const avg_do=((na_do+nb_do+rnd(5.1,.25))/3).toFixed(1);
+  document.getElementById('kpi-do').textContent=nb_do;
+  document.getElementById('p-ph').textContent=rnd(6.9,.15);
+  document.getElementById('p-do').textContent=avg_do;
+  document.getElementById('p-turb').textContent=irnd(62,5);
+  document.getElementById('p-tds').textContent=irnd(387,12);
+  document.getElementById('p-temp').textContent=rnd(28.9,.4);
+},5000);
+
+/* ─── TREND CHART ─── */
+const trendCtx=document.getElementById('trendChart').getContext('2d');
+const hrs=Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+const doData=hrs.map((_,i)=>+(4.5+Math.sin(i*.4)*1.2+(Math.random()-.5)*.4).toFixed(1));
+const phData=hrs.map((_,i)=>+(7.0+Math.sin(i*.3)*.25+(Math.random()-.5)*.1).toFixed(2));
+new Chart(trendCtx,{
+  type:'line',
+  data:{labels:hrs,datasets:[
+    {label:'DO (mg/L)',data:doData,borderColor:'#00FFA3',backgroundColor:'rgba(0,255,163,0.06)',fill:true,tension:.4,pointRadius:0,yAxisID:'y'},
+    {label:'pH',data:phData,borderColor:'#4F9EFF',backgroundColor:'transparent',tension:.4,pointRadius:0,yAxisID:'y2'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:'#7A96BB',font:{size:10},boxWidth:12}},tooltip:{backgroundColor:'rgba(8,16,28,0.95)',titleColor:'#E8F0FF',bodyColor:'#7A96BB',borderColor:'rgba(255,255,255,0.08)',borderWidth:1}},
+    scales:{
+      x:{ticks:{color:'#3A5470',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},
+      y:{ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false},position:'left'},
+      y2:{ticks:{color:'#4F9EFF',font:{size:9}},grid:{display:false},border:{display:false},position:'right'}
+    }
+  }
+});
+
+/* ─── ANALYTICS ─── */
+let analyticsInited=false;
+function initAnalytics(){
+  if(analyticsInited)return;analyticsInited=true;
+  const days=Array.from({length:30},(_,i)=>`D${i+1}`);
+  new Chart(document.getElementById('wqiChart').getContext('2d'),{
+    type:'line',
+    data:{labels:days,datasets:[{label:'WQI',data:days.map((_,i)=>+(48-i*.2+(Math.random()-.5)*4).toFixed(1)),borderColor:'#00D9FF',backgroundColor:'rgba(0,217,255,0.06)',fill:true,tension:.4,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(8,16,28,.95)',titleColor:'#E8F0FF',bodyColor:'#7A96BB'}},scales:{x:{ticks:{color:'#3A5470',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},y:{ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}}}
+  });
+  new Chart(document.getElementById('doChart').getContext('2d'),{
+    type:'line',
+    data:{labels:days,datasets:[{label:'DO mg/L',data:days.map((_,i)=>+(5.5-i*.06+(Math.random()-.5)*.8).toFixed(2)),borderColor:'#00FFA3',backgroundColor:'rgba(0,255,163,0.06)',fill:true,tension:.4,pointRadius:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3A5470',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},y:{min:2,ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}}}
+  });
+  new Chart(document.getElementById('radarChart').getContext('2d'),{
+    type:'radar',
+    data:{labels:['pH','DO','Turbidity','TDS','Phosphate','Nitrate','Chlorophyll'],datasets:[
+      {label:'Current',data:[82,38,38,77,16,52,45],borderColor:'#FF4D6D',backgroundColor:'rgba(255,77,109,0.1)',pointBackgroundColor:'#FF4D6D',pointRadius:3},
+      {label:'Target',data:[85,90,80,80,90,80,80],borderColor:'rgba(0,255,163,0.5)',backgroundColor:'rgba(0,255,163,0.05)',pointBackgroundColor:'#00FFA3',pointRadius:3,borderDash:[4,2]}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#7A96BB',font:{size:10},boxWidth:10}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(255,255,255,0.06)'},pointLabels:{color:'#7A96BB',font:{size:9}},angleLines:{color:'rgba(255,255,255,0.05)'}}}}
+  });
+  const params=['pH','DO','Turbidity','TDS','Phosphate'];
+  const wks=['Wk1','Wk2','Wk3','Wk4'];
+  const heatData=[];
+  params.forEach(p=>wks.forEach((w,i)=>heatData.push({x:w,y:p,v:Math.round(30+Math.random()*60)})));
+  const heatCtx=document.getElementById('heatChart').getContext('2d');
+  new Chart(heatCtx,{
+    type:'scatter',
+    data:{datasets:[{data:heatData.map(d=>({x:wks.indexOf(d.x),y:params.indexOf(d.y),r:8})),backgroundColor:heatData.map(d=>d.v>70?'rgba(255,77,109,0.7)':d.v>50?'rgba(255,181,71,0.7)':'rgba(0,255,163,0.5)'),pointStyle:'rect'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=heatData[c.dataIndex];return`${d.y} ${d.x}: ${d.v}`}}}},scales:{x:{ticks:{callback:(v)=>wks[v]||'',color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},y:{ticks:{callback:(v)=>params[v]||'',color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}}}}
+  });
+}
+
+/* ─── SAT TREND ─── */
+let satInited=false;
+function initSatTrend(){
+  if(satInited)return;satInited=true;
+  new Chart(document.getElementById('satTrend').getContext('2d'),{
+    type:'line',
+    data:{labels:['2019','2020','2021','2022','2023','2024','2025'],datasets:[{label:'Water Area (ha)',data:[18.2,17.1,16.4,15.9,15.1,14.7,14.2],borderColor:'#00D9FF',backgroundColor:'rgba(0,217,255,0.07)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#00D9FF'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},y:{ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}}}
+  });
+}
+
+/* ─── SCENARIO SIMULATOR ─── */
+let simChart=null;
+function initSimChart(){
+  const ctx=document.getElementById('simChart').getContext('2d');
+  if(simChart)simChart.destroy();
+  simChart=new Chart(ctx,{
+    type:'line',
+    data:{labels:['Now','1mo','2mo','3mo','4mo','5mo','6mo'],
+      datasets:[
+        {label:'Without intervention',data:[42,39,36,33,31,29,27],borderColor:'rgba(255,77,109,0.6)',backgroundColor:'transparent',tension:.4,pointRadius:0,borderDash:[4,3]},
+        {label:'With selected interventions',data:[42,42,42,42,42,42,42],borderColor:'#00FFA3',backgroundColor:'rgba(0,255,163,0.06)',fill:true,tension:.4,pointRadius:0,id:'sim-line'}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index'},plugins:{legend:{labels:{color:'#7A96BB',font:{size:10},boxWidth:10}}},scales:{x:{ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'},border:{display:false}},y:{min:20,max:90,ticks:{color:'#3A5470',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},border:{display:false}}}}
+  });
+  runSim();
+}
+function runSim(){
+  const aer=+document.getElementById('sl-aer').value;
+  const silt=+document.getElementById('sl-silt').value;
+  const wet=+document.getElementById('sl-wet').value;
+  const fish=+document.getElementById('sl-fish').value;
+  const sew=+document.getElementById('sl-sew').value;
+  document.getElementById('lbl-aer').textContent=aer;
+  document.getElementById('lbl-silt').textContent=silt+'m';
+  document.getElementById('lbl-wet').textContent=wet+'m';
+  document.getElementById('lbl-fish').textContent=['None','Low','Medium','High'][fish];
+  document.getElementById('lbl-sew').textContent=sew+'%';
+  const gain=Math.round(aer*3.2+silt*8+wet*.04+fish*5+sew*.18);
+  const wqi=Math.min(42+gain,97);
+  const bloomBase=Math.max(78-aer*4-wet*.04-sew*.3,5);
+  const doNew=Math.min(3.2+aer*.5,10).toFixed(1);
+  const phosNew=Math.max(2.1-sew*.015-wet*.001,0.2).toFixed(1);
+  const mosqLevels=['Severe','High','Moderate','Low','Very Low'];
+  const mosqIdx=Math.min(Math.floor(fish+aer*.3),4);
+  document.getElementById('sim-wqi').textContent=wqi;
+  document.getElementById('sim-wqi').className='outcome-big '+(wqi>=70?'c-green':wqi>=50?'c-cyan':'c-amber');
+  document.getElementById('sim-delta').textContent=gain>0?`+${gain} WQI points improvement`:'No interventions selected';
+  document.getElementById('sim-delta').className='outcome-delta '+(gain>0?'delta-pos':'');
+  document.getElementById('sim-bloom').textContent=`78% → ${Math.round(bloomBase)}%`;
+  document.getElementById('sim-bloom').className=bloomBase<40?'c-green':bloomBase<60?'c-amber':'c-red';
+  document.getElementById('sim-do').textContent=`3.2 → ${doNew} mg/L`;
+  document.getElementById('sim-do').className=doNew>=6?'c-green':doNew>=4?'c-amber':'c-red';
+  document.getElementById('sim-mosq').textContent=`Severe → ${mosqLevels[mosqIdx]}`;
+  document.getElementById('sim-mosq').className=mosqIdx>=3?'c-green':mosqIdx>=1?'c-amber':'c-red';
+  document.getElementById('sim-phos').textContent=`2.1 → ${phosNew} mg/L`;
+  document.getElementById('sim-phos').className=phosNew<0.5?'c-green':phosNew<1?'c-amber':'c-red';
+  const outlooks=['No change','Slight improvement','Moderate recovery','Significant recovery','Full recovery projected'];
+  document.getElementById('sim-out').textContent=outlooks[Math.min(Math.floor(gain/12),4)];
+  if(simChart){
+    const projection=[42];
+    for(let i=1;i<=6;i++){projection.push(Math.min(42+gain*(i/6)*(1+Math.random()*.1),97).toFixed(0)*1)}
+    simChart.data.datasets[1].data=projection;simChart.update('none');
+  }
+}
+
+/* ─── AI CHAT ─── */
+const aiResponses={
+  'What is the current lake health?':'WQI is 42/100 — moderate degradation. Node B dissolved oxygen critical at 3.2 mg/L. Phosphate elevated at 2.1 mg/L. Aerators are active. Bloom probability 78% within 14 days.',
+  'Predict water quality next week':'7-day forecast: WQI declining to 38/100. DO at Node B may fall below 3.0 mg/L. Bloom probability increasing to 83% if phosphate source not controlled. Confidence: 79%.',
+  'Explain Node B alert':'Node B is at the deepest mid-lake point. DO has fallen to 3.2 mg/L — below the fish survival threshold of 4 mg/L. This is caused by algal oxygen consumption at night combined with high turbidity blocking photosynthesis. Full aerators deployed.',
+  'Best restoration actions':'P1 priority: (1) Add 2 more aerators near Node B immediately. (2) Introduce Gambusia fish for mosquito larval control. P2: (3) Desilting programme to restore lake volume. (4) Wetland buffers to filter phosphate inflow from north inlet.',
+  'Summarise satellite data':'Latest Sentinel-2 pass today at 06:00. Water spread: 14.2 ha — down 8% over 3 months. Algal bloom signature in northwest quadrant — chlorophyll-a elevated. Vegetation cover 23%, declining. NDWI strong. Bloom risk classified HIGH.',
+};
+function sendChat(text){
+  const input=document.getElementById('chatInput');
+  const msg=text||input.value.trim();if(!msg)return;
+  const body=document.getElementById('chatBody');
+  const u=document.createElement('div');u.className='msg msg-user';u.textContent=msg;body.appendChild(u);
+  if(!text)input.value='';
+  const t=document.createElement('div');t.className='msg msg-ai';t.innerHTML='<span style="color:var(--tm)">Analysing…</span>';body.appendChild(t);body.scrollTop=9999;
+  setTimeout(()=>{
+    t.textContent=aiResponses[msg]||'Based on current sensor data: the lake shows signs of eutrophication driven by phosphate loading. Aerators are active. Would you like me to generate a specific prediction or restoration plan?';
+    body.scrollTop=9999;
+  },900);
+}
+document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+</script>
+</body>
+</html>
